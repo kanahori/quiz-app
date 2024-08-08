@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>アクセシブルなクイズアプリ</title>
+    <title>ショートカットキー</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -40,11 +40,27 @@
             padding: 5px;
             font-size: 16px;
         }
+        .feedback {
+            margin-top: 10px;
+            font-weight: bold;
+        }
+        .correct {
+            color: green;
+        }
+        .incorrect {
+            color: red;
+        }
+        #incorrectQuestions {
+            margin-top: 20px;
+        }
+        #incorrectQuestions li {
+            margin-bottom: 10px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>アクセシブルなクイズアプリ</h1>
+        <h1>アクセシブルなクイズアプリ（拡張版）</h1>
         
         <div id="settingsContainer">
             <h2>設定</h2>
@@ -78,24 +94,54 @@
             <h2 id="question"></h2>
             <div id="options"></div>
             <p id="progress"></p>
+            <div id="feedback" class="feedback"></div>
+            <button id="nextQuestion" style="display:none;">次の問題へ</button>
         </div>
 
         <div id="results" style="display:none;">
             <h2>クイズ結果</h2>
             <p id="score"></p>
             <p id="time"></p>
+            <div id="incorrectQuestions"></div>
             <button id="restart">もう一度挑戦</button>
         </div>
     </div>
 
-    <!-- 外部クイズデータファイルの読み込み -->
-    <script src="quizData.js"></script>
-
     <script>
+        const quizData = [
+            {
+                question: "Windowsでコピーするキーボードショートカットは？",
+                options: ["Ctrl+C", "Ctrl+V", "Ctrl+X", "Ctrl+Z"],
+                correctAnswer: "Ctrl+C"
+            },
+            {
+                question: "Windowsでタスクマネージャーを開くキーの組み合わせは？",
+                options: ["Ctrl+Alt+Delete", "Ctrl+Shift+Esc", "Windows+X", "Alt+F4"],
+                correctAnswer: "Ctrl+Shift+Esc"
+            },
+            {
+                question: "Microsoft Wordで太字にするショートカットキーは？",
+                options: ["Ctrl+B", "Ctrl+I", "Ctrl+U", "Ctrl+T"],
+                correctAnswer: "Ctrl+B"
+            },
+            {
+                question: "ブラウザで新しいタブを開くショートカットは？",
+                options: ["Ctrl+T", "Ctrl+N", "Ctrl+W", "Ctrl+Shift+T"],
+                correctAnswer: "Ctrl+T"
+            },
+            {
+                question: "Windowsですべてのウィンドウを最小化するショートカットは？",
+                options: ["Windows+D", "Windows+M", "Windows+L", "Windows+E"],
+                correctAnswer: "Windows+D"
+            },
+            // 追加の問題をここに記述
+        ];
+
         let currentQuestionIndex = 0;
         let score = 0;
         let startTime;
         let shuffledQuizData = [];
+        let incorrectAnswers = [];
 
         const settingsContainer = document.getElementById('settingsContainer');
         const quizContainer = document.getElementById('quizContainer');
@@ -107,6 +153,9 @@
         const timeElement = document.getElementById('time');
         const startButton = document.getElementById('startQuiz');
         const restartButton = document.getElementById('restart');
+        const feedbackElement = document.getElementById('feedback');
+        const nextQuestionButton = document.getElementById('nextQuestion');
+        const incorrectQuestionsElement = document.getElementById('incorrectQuestions');
 
         function shuffleArray(array) {
             for (let i = array.length - 1; i > 0; i--) {
@@ -119,6 +168,7 @@
             currentQuestionIndex = 0;
             score = 0;
             startTime = new Date();
+            incorrectAnswers = [];
             shuffledQuizData = [...quizData];
             shuffleArray(shuffledQuizData);
             shuffledQuizData = shuffledQuizData.slice(0, parseInt(document.getElementById('questionCount').value));
@@ -141,14 +191,43 @@
                 optionsContainer.appendChild(button);
             });
             progressElement.textContent = `問題 ${currentQuestionIndex + 1} / ${shuffledQuizData.length}`;
+            feedbackElement.textContent = '';
+            nextQuestionButton.style.display = 'none';
             setFocus(optionsContainer.firstChild);
         }
 
         function selectAnswer(selectedAnswer) {
             const question = shuffledQuizData[currentQuestionIndex];
-            if (selectedAnswer === question.correctAnswer) {
+            const isCorrect = selectedAnswer === question.correctAnswer;
+            
+            if (isCorrect) {
                 score++;
+                feedbackElement.textContent = '正解です！';
+                feedbackElement.className = 'feedback correct';
+            } else {
+                feedbackElement.textContent = `不正解です。正解は "${question.correctAnswer}" でした。`;
+                feedbackElement.className = 'feedback incorrect';
+                incorrectAnswers.push({
+                    question: question.question,
+                    userAnswer: selectedAnswer,
+                    correctAnswer: question.correctAnswer
+                });
             }
+
+            Array.from(optionsContainer.children).forEach(button => {
+                button.disabled = true;
+                if (button.textContent === question.correctAnswer) {
+                    button.style.backgroundColor = 'lightgreen';
+                } else if (button.textContent === selectedAnswer && !isCorrect) {
+                    button.style.backgroundColor = 'lightcoral';
+                }
+            });
+
+            nextQuestionButton.style.display = 'block';
+            nextQuestionButton.focus();
+        }
+
+        function nextQuestion() {
             currentQuestionIndex++;
             if (currentQuestionIndex < shuffledQuizData.length) {
                 displayQuestion();
@@ -164,6 +243,22 @@
             resultsContainer.style.display = 'block';
             scoreElement.textContent = `スコア: ${score} / ${shuffledQuizData.length}`;
             timeElement.textContent = `所要時間: ${timeElapsed} 秒`;
+
+            if (incorrectAnswers.length > 0) {
+                incorrectQuestionsElement.innerHTML = '<h3>間違えた問題:</h3><ul>';
+                incorrectAnswers.forEach(item => {
+                    incorrectQuestionsElement.innerHTML += `
+                        <li>
+                            <p><strong>問題:</strong> ${item.question}</p>
+                            <p><strong>あなたの回答:</strong> ${item.userAnswer}</p>
+                            <p><strong>正解:</strong> ${item.correctAnswer}</p>
+                        </li>
+                    `;
+                });
+                incorrectQuestionsElement.innerHTML += '</ul>';
+            } else {
+                incorrectQuestionsElement.innerHTML = '<p>全問正解です！おめでとうございます！</p>';
+            }
         }
 
         function setFocus(element) {
@@ -197,6 +292,7 @@
             settingsContainer.style.display = 'block';
             startButton.style.display = 'inline-block';
         });
+        nextQuestionButton.addEventListener('click', nextQuestion);
 
         document.addEventListener('keydown', (e) => {
             if (quizContainer.style.display === 'block') {
