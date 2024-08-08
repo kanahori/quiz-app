@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>アクセシブルなクイズアプリ</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            transition: all 0.3s ease;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        h1, h2 {
+            margin-bottom: 20px;
+        }
+        button {
+            padding: 10px;
+            margin: 5px;
+            cursor: pointer;
+        }
+        #quizContainer {
+            margin-top: 20px;
+        }
+        #options button {
+            display: block;
+            width: 100%;
+            text-align: left;
+            margin-bottom: 10px;
+        }
+        #settingsContainer {
+            margin-bottom: 20px;
+        }
+        select {
+            padding: 5px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>アクセシブルなクイズアプリ</h1>
+        
+        <div id="settingsContainer">
+            <h2>設定</h2>
+            <label for="fontSize">文字サイズ:</label>
+            <select id="fontSize">
+                <option value="14">小</option>
+                <option value="16" selected>中</option>
+                <option value="18">大</option>
+                <option value="20">特大</option>
+            </select>
+
+            <label for="theme">カラーテーマ:</label>
+            <select id="theme">
+                <option value="light" selected>ライト</option>
+                <option value="dark">ダーク</option>
+                <option value="highContrast">ハイコントラスト</option>
+            </select>
+
+            <label for="questionCount">問題数:</label>
+            <select id="questionCount">
+                <option value="5">5</option>
+                <option value="10" selected>10</option>
+                <option value="15">15</option>
+                <option value="20">20</option>
+            </select>
+        </div>
+
+        <button id="startQuiz">クイズを開始</button>
+
+        <div id="quizContainer" style="display:none;">
+            <h2 id="question"></h2>
+            <div id="options"></div>
+            <p id="progress"></p>
+        </div>
+
+        <div id="results" style="display:none;">
+            <h2>クイズ結果</h2>
+            <p id="score"></p>
+            <p id="time"></p>
+            <button id="restart">もう一度挑戦</button>
+        </div>
+    </div>
+
+    <!-- 外部クイズデータファイルの読み込み -->
+    <script src="quizData.js"></script>
+
+    <script>
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let startTime;
+        let shuffledQuizData = [];
+
+        const settingsContainer = document.getElementById('settingsContainer');
+        const quizContainer = document.getElementById('quizContainer');
+        const resultsContainer = document.getElementById('results');
+        const questionElement = document.getElementById('question');
+        const optionsContainer = document.getElementById('options');
+        const progressElement = document.getElementById('progress');
+        const scoreElement = document.getElementById('score');
+        const timeElement = document.getElementById('time');
+        const startButton = document.getElementById('startQuiz');
+        const restartButton = document.getElementById('restart');
+
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        function startQuiz() {
+            currentQuestionIndex = 0;
+            score = 0;
+            startTime = new Date();
+            shuffledQuizData = [...quizData];
+            shuffleArray(shuffledQuizData);
+            shuffledQuizData = shuffledQuizData.slice(0, parseInt(document.getElementById('questionCount').value));
+            settingsContainer.style.display = 'none';
+            quizContainer.style.display = 'block';
+            startButton.style.display = 'none';
+            displayQuestion();
+        }
+
+        function displayQuestion() {
+            const question = shuffledQuizData[currentQuestionIndex];
+            questionElement.textContent = `問題 ${currentQuestionIndex + 1}: ${question.question}`;
+            optionsContainer.innerHTML = '';
+            question.options.forEach((option, index) => {
+                const button = document.createElement('button');
+                button.textContent = option;
+                button.addEventListener('click', () => selectAnswer(option));
+                button.setAttribute('aria-posinset', index + 1);
+                button.setAttribute('aria-setsize', question.options.length);
+                optionsContainer.appendChild(button);
+            });
+            progressElement.textContent = `問題 ${currentQuestionIndex + 1} / ${shuffledQuizData.length}`;
+            setFocus(optionsContainer.firstChild);
+        }
+
+        function selectAnswer(selectedAnswer) {
+            const question = shuffledQuizData[currentQuestionIndex];
+            if (selectedAnswer === question.correctAnswer) {
+                score++;
+            }
+            currentQuestionIndex++;
+            if (currentQuestionIndex < shuffledQuizData.length) {
+                displayQuestion();
+            } else {
+                showResults();
+            }
+        }
+
+        function showResults() {
+            const endTime = new Date();
+            const timeElapsed = Math.floor((endTime - startTime) / 1000);
+            quizContainer.style.display = 'none';
+            resultsContainer.style.display = 'block';
+            scoreElement.textContent = `スコア: ${score} / ${shuffledQuizData.length}`;
+            timeElement.textContent = `所要時間: ${timeElapsed} 秒`;
+        }
+
+        function setFocus(element) {
+            setTimeout(() => element.focus(), 0);
+        }
+
+        function applySettings() {
+            document.body.style.fontSize = `${document.getElementById('fontSize').value}px`;
+            const theme = document.getElementById('theme').value;
+            switch (theme) {
+                case 'light':
+                    document.body.style.backgroundColor = '#fff';
+                    document.body.style.color = '#333';
+                    break;
+                case 'dark':
+                    document.body.style.backgroundColor = '#333';
+                    document.body.style.color = '#fff';
+                    break;
+                case 'highContrast':
+                    document.body.style.backgroundColor = '#000';
+                    document.body.style.color = '#fff';
+                    break;
+            }
+        }
+
+        document.getElementById('fontSize').addEventListener('change', applySettings);
+        document.getElementById('theme').addEventListener('change', applySettings);
+        startButton.addEventListener('click', startQuiz);
+        restartButton.addEventListener('click', () => {
+            resultsContainer.style.display = 'none';
+            settingsContainer.style.display = 'block';
+            startButton.style.display = 'inline-block';
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (quizContainer.style.display === 'block') {
+                const options = optionsContainer.children;
+                let currentFocus = Array.from(options).findIndex(option => option === document.activeElement);
+                switch (e.key) {
+                    case 'ArrowDown':
+                    case 'ArrowRight':
+                        e.preventDefault();
+                        setFocus(options[(currentFocus + 1) % options.length]);
+                        break;
+                    case 'ArrowUp':
+                    case 'ArrowLeft':
+                        e.preventDefault();
+                        setFocus(options[(currentFocus - 1 + options.length) % options.length]);
+                        break;
+                }
+            }
+        });
+
+        // 設定を適用
+        applySettings();
+
+        // 保存された設定を読み込む
+        if (localStorage.getItem('quizSettings')) {
+            const settings = JSON.parse(localStorage.getItem('quizSettings'));
+            document.getElementById('fontSize').value = settings.fontSize;
+            document.getElementById('theme').value = settings.theme;
+            document.getElementById('questionCount').value = settings.questionCount;
+            applySettings();
+        }
+
+        // 設定を保存
+        function saveSettings() {
+            const settings = {
+                fontSize: document.getElementById('fontSize').value,
+                theme: document.getElementById('theme').value,
+                questionCount: document.getElementById('questionCount').value
+            };
+            localStorage.setItem('quizSettings', JSON.stringify(settings));
+        }
+
+        document.getElementById('fontSize').addEventListener('change', saveSettings);
+        document.getElementById('theme').addEventListener('change', saveSettings);
+        document.getElementById('questionCount').addEventListener('change', saveSettings);
+    </script>
+</body>
+</html>
